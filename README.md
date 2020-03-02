@@ -8,21 +8,21 @@ The goal is to implement an algorithm in Python that will distinguish a moving o
 
 
 ## TO-DO
-- [] Frame Grabber
+- [ ] Frame Grabber
   -  Aqcuires frame [n]
-- [] Drift Removal
+- [ ] Drift Removal
   -  Corrects the image to compensate for intensity drifts
-- [] Initialize BG Estimation Filter
+- [ ] Initialize BG Estimation Filter
   -  Average corrected image over [q] frames
-- [] Initialize Variance Estimation Filter
+- [ ] Initialize Variance Estimation Filter
   -  Like BG Initialize but calculating Standard Deviation
-- [] Implement Run-time BG Estimation
-- [] Implement Run-time Variance Estimation
-- [] Add T1 Threshold for Estimation control
-- [] Add T2 Threshold for Output sensitivity
-- [] Add Refresh of Frozen Estimations
+- [ ] Implement Run-time BG Estimation
+- [ ] Implement Run-time Variance Estimation
+- [ ] Add T1 Threshold for Estimation control
+- [ ] Add T2 Threshold for Output sensitivity
+- [ ] Add Refresh of Frozen Estimations
   -  Prevents Permanent 'movement' in a stationary location
-- [] Output Refinement
+- [ ] Output Refinement
   -  Eliminates all single pixel estimations
   -  Dilate -> Erode joins close blobs together
 
