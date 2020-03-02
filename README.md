@@ -8,13 +8,13 @@ The goal is to implement an algorithm in Python that will distinguish a moving o
 
 
 ## TO-DO
-- [ ] Frame Grabber
+- [x] Frame Grabber
   -  Aqcuires frame [n]
-- [ ] Drift Removal
+- [x] Drift Removal
   -  Corrects the image to compensate for intensity drifts
-- [ ] Initialize BG Estimation Filter
+- [x] Initialize BG Estimation Filter
   -  Average corrected image over [q] frames
-- [ ] Initialize Variance Estimation Filter
+- [x] Initialize Variance Estimation Filter
   -  Like BG Initialize but calculating Standard Deviation
 - [ ] Implement Run-time BG Estimation
 - [ ] Implement Run-time Variance Estimation
