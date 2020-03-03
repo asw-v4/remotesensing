@@ -1,4 +1,4 @@
-# Extracting Moving Objects from Thermal/IR Image Sequences
+# Extracting Moving Objects from IR Image Sequences
 
 ## Intro
 This is an implementation of the 2017 paper [**A Flexible Algorithm for Detecting Challenging Moving Objects in Real-Time within IR Video Sequences**](https://www.mdpi.com/2072-4292/9/11/1128) by Andrea Zingoni, Marco Diani, and Giovanni Corsini of the University of Pisa, and the Italian Naval Academy.
@@ -18,7 +18,7 @@ The goal is to implement an algorithm in Python that will distinguish a moving o
   -  Like BG Initialize but calculating Standard Deviation
 - [ ] Implement Run-time BG Estimation
 - [ ] Implement Run-time Variance Estimation
-- [ ] Add T1 Threshold for Estimation control
+- [x] Add T1 Threshold for Estimation control
 - [ ] Add T2 Threshold for Output sensitivity
 - [ ] Add Refresh of Frozen Estimations
   -  Prevents Permanent 'movement' in a stationary location
