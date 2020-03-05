@@ -16,10 +16,10 @@ The goal is to implement an algorithm in Python that will distinguish a moving o
   -  Average corrected image over [q] frames
 - [x] Initialize Variance Estimation Filter
   -  Like BG Initialize but calculating Standard Deviation
-- [ ] Implement Run-time BG Estimation
-- [ ] Implement Run-time Variance Estimation
+- [x] Implement Run-time BG Estimation
+- [x] Implement Run-time Variance Estimation
 - [x] Add T1 Threshold for Estimation control
-- [ ] Add T2 Threshold for Output sensitivity
+- [x] Add T2 Threshold for Output sensitivity
 - [ ] Add Refresh of Frozen Estimations
   -  Prevents Permanent 'movement' in a stationary location
 - [ ] Output Refinement
