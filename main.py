@@ -184,10 +184,10 @@ class main:
             # print(np.count_nonzero(self.iRES), self.iRES.size - np.count_nonzero(self.iRES), self.iRES.size )
             # Counts moving pixels (middle value)
             rawMask = self.generateOutputMask(THRESHOLD_TWO, self.iBG, iCOR)
-            removed_singles = cv2.erode(rawMask, self.kernel, iterations=2)
+            removed_singles = cv2.erode(rawMask, self.kernel, iterations=5)
             filled_mask = cv2.dilate(removed_singles, self.kernel, iterations=2)
-
-            self.display_mask(removed_singles)
+            output = cv2.blur(filled_mask, (9,9))
+            self.display_mask(output)
 
 
 
