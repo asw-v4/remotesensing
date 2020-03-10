@@ -13,6 +13,7 @@ class main:
     def __init__(self,args):
         initialisationPeriod = 200# increase with low SNR
         self.loadVideoStream(args)
+        self.dim = None
         self.kernel = np.ones((3,3), np.uint8)
         self.run(initialisationPeriod, args)
 
@@ -28,11 +29,19 @@ class main:
 
     def loadVideoFrame(self):
         frame = self.stream.read()
+
         self.h, self.w, _ = frame.shape
+        if self.dim is None:
+            scale_percent = 130 # percent of original size
+            width = int(frame.shape[1] * scale_percent / 100)
+            height = int(frame.shape[0] * scale_percent / 100)
+            self.dim = (width, height)
+        frame = cv2.resize(frame, self.dim, interpolation=cv2.INTER_AREA)
         if frame is None:
             self.stop()
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         frame = frame/255
+        frame.astype('float16')
         iCOR = self.correctImage(frame)
         # print(np.amax(frame), np.amin(frame))
         # print(np.amax(iCOR), np.amin(iCOR))
@@ -56,6 +65,8 @@ class main:
             self.initialiseVarianceFilter(frame, iCOR)
         self.iBG = self.rollingAvg_iCOR
         self.iVARsq = self.rollingAvg_iVARsq
+
+
         print("Initialised")
 
     def initialiseBackgroundFilter(self, iCOR):
@@ -63,6 +74,7 @@ class main:
             self.rollingAvg_iCOR = self.rollingAvg_iCOR + (iCOR - self.rollingAvg_iCOR)/self.n
         except:
             self.rollingAvg_iCOR = iCOR
+            self.rollingAvg_iCOR.astype('float16')
         # print(np.count_nonzero(self.rollingAvg_iCOR), np.count_nonzero(iCOR))
 
     def initialiseVarianceFilter(self, frame, iCOR):
@@ -70,7 +82,7 @@ class main:
             self.rollingAvg_iVARsq = self.rollingAvg_iVARsq + (np.square(self.rollingAvg_iCOR -frame) - self.rollingAvg_iVARsq)/self.n
         except:
             self.rollingAvg_iVARsq = np.square(self.rollingAvg_iCOR-frame)
-
+            self.rollingAvg_iVARsq.astype('float16')
 
     def updateThresholds(self, t1, t2, iVAR):
 
@@ -80,14 +92,14 @@ class main:
 
     def generateMasks(self, iCOR, iBG, THRESHOLD_ONE):
         iRES = iCOR - iBG
-        absiRES = abs(iRES)
+        absiRES = np.abs(iRES)
         # absolute value to invert negative values
         temp = THRESHOLD_ONE - absiRES
         temp = np.clip(temp, a_min=0, a_max=255)
         # Positive values are below THRESHOLD_ONE
         # Only update pixels below the threshold
-        update_BG_mask = cv2.threshold(temp, 0, 1, cv2.THRESH_BINARY)[1]
-        freeze_update_BG_mask = cv2.threshold(temp, 0, 1, cv2.THRESH_BINARY_INV)[1]
+        update_BG_mask = cv2.threshold(temp, 0, 1, cv2.THRESH_BINARY_INV)[1]
+        freeze_update_BG_mask = cv2.threshold(temp, 0, 1, cv2.THRESH_BINARY)[1]
         # print(np.count_nonzero(update_BG_mask), np.count_nonzero(temp))
         # print(np.count_nonzero(freeze_update_BG_mask), temp.size - np.count_nonzero(temp))
         # Confirm correct values are being converted to 1 in each mask
@@ -97,15 +109,19 @@ class main:
         update_BG_mask = update_BG_mask*(alpha*iBG + (1-alpha)*iCOR)
         freeze_BG_mask = freeze_BG_mask*iBG
         self.iBG = update_BG_mask + freeze_BG_mask
-        # cv2.imshow("iBG", self.iBG)
-        print(np.amax(self.rollingAvg_iCOR), np.amax(self.iBG))
+        self.iBG.astype('float16')
+        # cv2.imshow("update", update_BG_mask)
+        # cv2.imshow("freeze", freeze_BG_mask)
+        cv2.imshow("self.iBG", self.iBG)
+        # print(np.amax(update_BG_mask), np.amin(update_BG_mask))
 
     def predict_iVAR(self, beta, iVARsq, iBG, iCOR, update_BG_mask, freeze_BG_mask):
         update_BG_mask = update_BG_mask*(beta*iVARsq + (1-beta)*np.square(iCOR - iBG))
         freeze_BG_mask = freeze_BG_mask*iVARsq
         self.iVARsq = update_BG_mask + freeze_BG_mask
-        print(np.amax(iVARsq), np.amin(iVARsq))
-        # cv2.imshow("iVARsq", self.iVARsq)
+        self.iVARsq.astype('float16')
+        # print(np.amax(iVARsq), np.amin(iVARsq))
+        cv2.imshow("iVARsq", self.iVARsq)
 
     def generateOutputMask(self, THRESHOLD_TWO, iBG, iCOR):
         absiRES = abs(iBG - iCOR)
@@ -121,37 +137,33 @@ class main:
         # print(np.count_nonzero(temp),np.count_nonzero(MOVING_mask) )
         return MOVING_mask
 
-    def display_mask(self, output):
+    def display_mask(self, output, overlay=False):
+
         cv2.imshow("MASK", output)
         k = cv2.waitKey(1)
         if k == ord('q'):
             self.stop()
 
-    def checkFrozen(self, iBG):
-        try:
-            diff = abs(self.lastBG - iBG)
-            self.lastBG = iBG
-        except:
-            self.lastBG = iBG
-            diff = np.ones((self.h,self.w))
-
-        no_diff_mask = cv2.threshold(diff, 0, 1, cv2.THRESH_BINARY_INV)[1]
-        # all with no diff = 1
-        self.freeze_mask = self.freeze_mask*no_diffpredict__mask + no_diff_mask
-        # resets values to 0 if no_diff is 0, else + 1
-        maxFreeze_mask = self.freeze_mask / self.max_freeze
-        maxFreeze_mask.astype(int)
-        # only values = max_freeze will = 1
-        inv_to_reset = cv2.threshold(maxFreeze_mask, 0, 1, cv2.THRESH_BINARY_INV)[1]
-        # sets frozen values to 0, and non froen to 1
-        self.iBG = self.iBG*inv_to_reset
-        self.iVARsq = self.iVARsq*inv_to_reset
-        # resets frozen values to 0
-
-
-
-
-
+    # def checkFrozen(self, iBG):
+    #     try:
+    #         diff = abs(self.lastBG - iBG)
+    #         self.lastBG = iBG
+    #     except:
+    #         self.lastBG = iBG
+    #         diff = np.ones((self.h,self.w))
+    #
+    #     no_diff_mask = cv2.threshold(diff, 0, 1, cv2.THRESH_BINARY_INV)[1]
+    #     # all with no diff = 1
+    #     self.freeze_mask = self.freeze_mask*no_diff_mask + no_diff_mask
+    #     # resets values to 0 if no_diff is 0, else + 1
+    #     maxFreeze_mask = self.freeze_mask / self.max_freeze
+    #     maxFreeze_mask.astype(int)
+    #     # only values = max_freeze will = 1
+    #     inv_to_reset = cv2.threshold(maxFreeze_mask, 0, 1, cv2.THRESH_BINARY_INV)[1]
+    #     # sets frozen values to 0, and non froen to 1
+    #     self.iBG = self.iBG*inv_to_reset
+    #     self.iVARsq = self.iVARsq*inv_to_reset
+    #     # resets frozen values to 0
 
     def run(self, initialisationPeriod, args):
         t1 = float(args.thr1)
@@ -159,11 +171,11 @@ class main:
 
         assert t1 < t2
 
-        alpha = 1
-        beta = 0.987
+        alpha = 0.99
+        beta = 0.99
         self.initialiseFilters(initialisationPeriod)
-        self.max_freeze = int(args.warmup)
-        self.freeze_mask = np.zeros((self.h, self.w))
+        # self.max_freeze = int(args.warmup)
+        # self.freeze_mask = np.zeros((self.h, self.w))
 
         while self.stream.more() is True:
 
@@ -180,11 +192,9 @@ class main:
             # self.iBG is now inline with iCOR and frame
             self.predict_iVAR(beta, self.iVARsq, self.iBG, iCOR, update, freeze)
             # self.iVARsq is now inline with iCOR, frame and iBG
-            # self.checkFrozen(self.iBG) #check frozen BG
-            # print(np.count_nonzero(self.iRES), self.iRES.size - np.count_nonzero(self.iRES), self.iRES.size )
-            # Counts moving pixels (middle value)
-            rawMask = self.generateOutputMask(THRESHOLD_TWO, self.iBG, iCOR)
-            removed_singles = cv2.erode(rawMask, self.kernel, iterations=5)
+
+            output = self.generateOutputMask(THRESHOLD_TWO, self.iBG, iCOR)
+            removed_singles = cv2.erode(output, self.kernel, iterations=1)
             filled_mask = cv2.dilate(removed_singles, self.kernel, iterations=2)
             output = cv2.blur(filled_mask, (9,9))
             self.display_mask(output)
@@ -198,7 +208,7 @@ if __name__ == '__main__':
     argparser.add_argument('-v', '--video', help='path to IR Video')
     argparser.add_argument('-t1', '--thr1', help='Estimation Threshold')
     argparser.add_argument('-t2', '--thr2', help='Output Sensitivty')
-    argparser.add_argument('-w', '--warmup', help='How long to tolerate frozen pixels')
+    # argparser.add_argument('-w', '--warmup', help='How long to tolerate frozen pixels')
 
     args = argparser.parse_args()
     main(args)
